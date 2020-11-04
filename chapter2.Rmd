@@ -1,4 +1,4 @@
-# Linear regression analysis (IODS exercise 2)  
+# Linear regression analysis (week 2)  
 
 > *This week started with reminder of basic data wrangling techniques. Linear regression was briefly introduced, as well as my old friend, ggplot2 package for data visualization. RMarkdown feels a bit less terrifying every time I use it*  
 

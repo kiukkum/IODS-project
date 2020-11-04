@@ -1,14 +1,15 @@
 
-# About the project
+# About me
 
-This is the Introduction to open data science course 2020 page. I am awaiting to learn data science and how to use RMarkdown during the course. My github repository is in https://github.com/kiukkum/IODS-project
-  
+I  Kiira, MSc and project researcher in UEF. I heard about the IODS-course from my team members who have previously taken the course. I am currently working with register-based patient data and therefore want to learn more regarding data analysis. I have previous experience in using R and during my studies in biomedicine we briefly discussed different dimension reduction and clustering methods (e.g. PCA, hierarchical clustering). I am awaiting to learn more during this course! 
+
+My github repository is found [here](http://github.com/kiukkum/IODS-project/)
 
 ```{r}
-# This is a so-called "R chunk" where you can write R code.
+# Write R code.
 
 date()
 
 ```
-The text continues here.
+
 
