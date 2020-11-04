@@ -1,13 +1,105 @@
-# Insert chapter 2 title here
+# Linear regression analysis (IODS exercise 2)  
 
-*Describe the work you have done this week and summarize your learning.*
+> *This week started with reminder of basic data wrangling techniques. Linear regression was briefly introduced, as well as my old friend, ggplot2 package for data visualization. RMarkdown feels a bit less terrifying every time I use it*  
 
-- Describe your work and results clearly. 
-- Assume the reader has an introductory course level understanding of writing and reading R code as well as statistical methods.
-- Assume the reader has no previous knowledge of your data or the more advanced methods you are using.
+
+#### In this exercise, the effect of attitude towards learning statistics was studied.  
+  
+Linear regression analysis was used to study how much participant's attitude can affect the points gotten in statistics exam. The used data had 166 observations of 7 variables, including __age__ and __gender__ of the individual participating the ASSIST survey.
+
 
 ```{r}
-date()
+#Reading the data in and observing the data 
+data <- read.delim("learning_data2.txt", header = T, sep= "")
+head(data)
+#and the structure of the data
+str(data)
 ```
 
-Here we go again...
+The ASSIST survey measures interest towards learning. It is used to measure how participants approach learning by using deep questions (such as seeking meaning and using evidence), strategic approach (such as organizing studying and time management), and surface approach questions (such as fear of failure and unrelated memorizing). These are included in the data with variables __deep__, __stra__ and __surf__. 
+
++ The participant answers the questions by choosing the most describing number from scale 1-5 (being highest). The number represents the average calculated from multiple questions (12 for deep and surface, 8 for strategic). 
+
+* Variable __attitude__ describes participant's global attitude towards statistics. It represents the average answer from 10 questions. 
+
+* Furthermore, __points__ present points gotten from the exam (when 0's were deleted). 
+
+Here, the summary of the variables is visualized:
+
+```{r}
+#Calculating summary statistics from the data
+summary(data)
+#And visualizing the data and e.g. its distributions
+library(GGally)
+ggpairs(data, mapping = aes(col = gender, alpha = 0.3), lower = list(combo = wrap("facethist", bins = 20)))
+```
+  
+The mean age of the participants is positively skewed, since many participants are in their twenties and less participants are 40 or older. Therefore, the results may not be well applied to older students. 
+
+* Deep, stra and surf question answers follow a bit better the normal distribution, where as points and attitude are a bit negatively skewed. 
+
++ The median of attitude is 3.2. 
+
+* Some gender-specific differences do seem to show up, since males seem to have a little higher attitude towards statistics than females. Also, females seem to show higher points in surface questions.
+
+
+```{r}
+#Visualizing the data
+library(tidyverse)
+ggplot(data, aes(x = attitude, y = points, col = gender))+
+  geom_point()+
+  geom_smooth(method = "lm")+
+  theme_bw()
+
+```
+
+
+The regression line is raising, so higher attitude points correspond to higher points from an exam. Based on the figure, this association is a bit stronger in males, since the slope is a bit higher. Statistical models should however confirm these results.
+
+
+```{r}
+#Calculating linear regression model and summary statistics
+my_model <-lm(points ~ attitude +gender + stra, data = data)
+summary(my_model)
+```
+  
+Based on the linear regression model summary, only attitude is significant. 
+
+* Therefore, gender and/or strategic question answers should not have significant difference with points on the exam. 
+
+* Estimate 3.5100 means that when attitude increases by one, the points in the exam increase by 3.5100. 
+
+* R-squared tells about the fit of the model, which in here is 0.1904. It means that the estimates do not follow nicely the regression line, but that there is variance. Maybe another explanatory variables could be added..?
+
+Due to these results, gender and strategic questions are deleted from the model.
+
+```{r}
+#Calculating another model and summary statistics
+my_model2 <-lm(points ~ attitude, data = data)
+summary(my_model2)
+````
+  
+In the updated model,
+
+* the p-value of attitude is 4.12e-09. 
+
+* When attitude increases by one, the points of the exam increase by 3.5255. 
+
+* The multiple R-squared is  0.1906, so there is variance around the regression line. The variance is even higher than in the previous model, so increasing another estimates might help.
+
+```{r}
+# Diagnostic plots to check the validity of the model
+plot(my_model2, which = c(1,2,5), par(mfrow = c(2,2)))
+````
+  
+Since linear regression models assume the errors to be normally distributed, not to be correlated and to have a constant variance, the residuals can be used to confirm these assumptions. 
+
+* Based on the diagnostic plots (Residuals vs Fitted values, Normal QQ-plot and Residuals vs Leverage), the residuals follow quite well the normal distribution. 
+
+* However, the variance of the residuals is not fully constant. 
+
+* The leverage plot shows that some values have more leverage than other values. Therefore some outliers could maybe be excluded.
+
+__Until next week__
+
+
