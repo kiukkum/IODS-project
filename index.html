@@ -453,7 +453,7 @@ summary {
 <pre class="r"><code># Write R code.
 
 date()</code></pre>
-<pre><code>## [1] &quot;Wed Nov 11 14:53:29 2020&quot;</code></pre>
+<pre><code>## [1] &quot;Wed Nov 11 14:57:51 2020&quot;</code></pre>
 <hr />
 </div>
 <div id="linear-regression-analysis-week-2" class="section level1">
@@ -833,7 +833,7 @@ cv &lt;- cv.glm(data = data, cost = loss_func, glmfit = model2, K = 10)
 
 # average number of wrong predictions in the cross validation
 cv$delta[1]</code></pre>
-<pre><code>## [1] 0.2918919</code></pre>
+<pre><code>## [1] 0.2837838</code></pre>
 <p>The error is 29 % with the 10-fold cross-validated model.</p>
 <p>Therefore, for predicting high-low alcohol consumption, another model should be used. It should be noticed, that the data is not “normally distributed”, since the different classes do not have similar amount of participants in them. This might lead to a biased model.</p>
 <pre class="r"><code>#Plot test
