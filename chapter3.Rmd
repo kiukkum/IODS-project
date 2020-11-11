@@ -1,0 +1,196 @@
+# Logistic regression (week 3)  
+
+> *This week continued with data wrangling. Logistic regression was introduced to study alcohol consumption*  
+
+In this exercise, data from Machine Learning repository was downloaded. More information from the data is found in [here](https://archive.ics.uci.edu/ml/datasets/Student+Performance). 
+
+The data was used to study student performance on math and portuguese exams. Here, the data is used to study which factors may explain high or low alcohol consumption. High alcohol consumption is defined from alcohol use, calculated as average from weekend and workday alcohol consumption (measured in scale from  1 being very low to 5 being very high). High alcohol consumption (TRUE) is defined as > 2 points. 
+
+
+```{r echo=FALSE, results='hide', include = FALSE}
+library(tidyr)
+library(dplyr)
+
+library(ggplot2)
+library(boot)
+library(cowplot)
+```
+
+
+```{r}
+#Making the data easier to observe by dropping some columns not needed
+pormath <-read.csv("pormath.csv")
+data <- select(pormath, sex, famsup, failures, internet, high_use, alc_use)
+head(data, n=3)
+data$failures <- as.factor(data$failures)
+str(data)
+```
+
+   
+   The studied explanatory variables are sex, access to internet at home, class failures and family support. Sex-specific differences may occur, internet access may reflect the environment where one lives, which again may be counteracted with family support. Class failures may reflect problems with school.
+
+
+
+```{r}
+#Observing how the data is distributed based on the variables
+gather(data)  %>% 
+  ggplot(aes(value))+ 
+  geom_bar()+
+  facet_wrap("key", scales = "free")
+
+```
+   
+   There are less high alcohol users than low users, seen from both alc_use and high_use variables. Many of the students have not had failures in classes, and most of the students have access to internet. These may affect finding the best line, since some groups are under- and some over-presented.  There are a bit more females in the data, than males.
+   
+```{r}
+#Testing whether there is significant difference in persons high alcohol use and sex
+tbl <- table(data$high_use, data$sex)
+tbl
+chisq.test(tbl) 
+
+```
+There is significant (p<0.001) difference between high/low alcohol use and sex. Less females belong to high alcohol users -group than males. Therefore, as hypothesized before, gender-specific differences do exist in the data.
+
+
+Then, logistic regression analysis is performed to study how selected variables predict high/low alcohol use. High/low alcohol use is explained by sex, class failures, internet access in the home and family support
+
+```{r}
+#Calculating logistic regression model, where high alcohol use is explained by class
+model <- glm(high_use ~ sex + failures + internet + famsup, data = data, family = "binomial")
+summary(model)
+```
+In this model, it is noticed that the deviance residuals are not totally symmetrical (on 1Q and 3Q).
+
+In this model, (log(odds)) high alcohol consumption = -1.67202 + 0.9364 * male, where if a participant is male, this is 0 and female, it is 1. If a participant is a female, the high alcohol consumption is log(odds)= -1.67202 and for male, log(odds) = -1.67202 + 0.9364 x1. There, the latter 0.9364x1 is the log(odds ratio) of males have over odds of females have.
+
+Significant estimators are failures and sex. (log(odds) of) internet access and family support are located only 0.703 and -0.011 standard deviations from the mean (z-values), so they are not significant.
+
+
+```{r}
+#Calculating pseudo-R^2 for the model
+ll.null <- model$null.deviance/-2
+ll.proposed <- model$deviance/-2
+
+(ll.null-ll.proposed)/ ll.null
+
+#Calculating p-value for the R^2
+1-pchisq(2*(ll.proposed - ll.null), df=(length(model$coefficients)-1))
+
+```
+For this model, the calculated R^2 is very small, so the model is not good for the intended use, even though the p-value is very small. Code for calculating the R^2 and p-value from [here](https://github.com/StatQuest/logistic_regression_demo/blob/master/logistic_regression_demo.R)
+
+
+```{r}
+#Then, calculating odds ratios and confidence intervals for those
+OR <- coef(model)%>% exp
+CI <- confint(model) %>% exp
+(md1 <-cbind(OR, CI))
+```
+
+The odds ratios (with respective confidence intervals) show that only for sex, and failure1 (compared to failure0) the CI doesn't overlap 1, making them significant. Here, the odds ratio for being a male has 2,46 times higher odd for being high-alcohol consumer.
+
+As previously stated, many class failures were included only for few students, with is here shown in very high confidence intervals.
+
+
+Then, the model is calculated again, so that internet access and family support are taken away from the model.
+```{r}
+#Calculating logistic regression model, where high alcohol use is explained by class
+model2 <- glm(high_use ~ sex + failures, data = data, family = "binomial")
+summary(model2)
+```
+
+```{r}
+#Calculating pseudo-R^2 for the model
+ll.null2 <- model2$null.deviance/-2
+ll.proposed2 <- model2$deviance/-2
+
+(ll.null2-ll.proposed2)/ ll.null2
+
+#Calculating p-value for the R^2
+1-pchisq(2*(ll.proposed2 - ll.null2), df=(length(model2$coefficients)-1))
+
+```
+
+
+Again, the R^2 is very small, even though the p-value is small, so high alcohol consumption is not explained by sex and failures at school. The estimators for sex and class failures do not change from the previous model.
+
+```{r}
+#Then, calculating odds ratios and confidence intervals for the updated model
+OR <- coef(model2)%>% exp
+CI <- confint(model2) %>% exp
+(md2 <-cbind(OR, CI))
+```
+
+Here, still, males have app. 2,5 times odds for being high alcohol consumers.
+
+
+The ability for this model to predic alcohol consumption is tested: 
+```{r}
+# predict() the probability of high_use
+probabilities <- predict(model2, type = "response")
+
+# add the predicted probabilities to 'alc'
+data <- mutate(data, probability = probabilities)
+head(data)
+# use the probabilities to make a prediction of high_use
+data <- mutate(data, prediction = probabilities >0.5)
+
+# see the last ten original classes, predicted probabilities, and class predictions
+select(data, sex, failures, high_use, probability, prediction) %>% tail(10)
+
+# tabulate the target variable versus the predictions
+table(high_use = data$high_use, prediction = data$prediction)
+```
+If the model would be used for predicting the alcohol use, there would be much falsely predicted individuals.
+
+```{r}
+g <- ggplot(data, aes(x = probability, y = high_use, col = prediction))
+
+# define the geom as points and draw the plot
+g + geom_point()
+
+# tabulate the target variable versus the predictions
+table(high_use = data$high_use, prediction = data$prediction) %>%
+prop.table %>%
+addmargins
+```
+
+
+```{r}
+#Defining loss function for mean prediction error
+loss_func <- function(class, prob) {
+  n_wrong <- abs(class - prob) > 0.5
+  mean(n_wrong)
+}
+loss_func(class = data$high_use, prob = data$probability)
+```
+The model would cause 28 % of the predictions to be falsely predicted.
+
+Lastly, the model is cross-validated to test the model in data the model has not seen before.
+
+```{r}
+#Crossvalidation: 10-fold validation
+cv <- cv.glm(data = data, cost = loss_func, glmfit = model2, K = 10)
+
+# average number of wrong predictions in the cross validation
+cv$delta[1]
+```
+
+
+The error is 29 % with the 10-fold cross-validated model.
+
+Therefore, for predicting high-low alcohol consumption, another model should be used. It should be noticed, that the data is not "normally distributed", since the different classes do not have similar amount of participants in them. This might lead to a biased model.
+
+```{r}
+#Plot test
+predicted.data <- data.frame(
+  probability.of.hd=model2$fitted.values,
+  high_use=data$high_use
+)
+predicted.data <- predicted.data[ + order(predicted.data$probability.of.hd, decreasing = FALSE),]
+predicted.data$rank <- 1:nrow(predicted.data)
+
+ggplot(predicted.data, aes(x=rank, y=probability.of.hd, col = high_use))+
+         geom_point(alpha =1, shape =4)
+
+```

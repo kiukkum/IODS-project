@@ -226,5 +226,57 @@ str(pormath)
 #$ high_use  : logi  FALSE TRUE FALSE FALSE TRUE FALSE ...
 #$ cid       : int  3001 3002 3003 3004 3005 3006 3007 3008 3009 3010 ...
 
+head(pormath)
+
 dim(pormath)
 #[1] 370  52
+
+
+#Testing which variables to use in the exercise
+
+table(pormath$high_use, pormath$sex)
+#F   M
+#FALSE 154 105
+#TRUE   41  70
+
+table(pormath$high_use, pormath$internet)
+#no yes
+#FALSE  42 217
+#TRUE   15  96
+
+table(pormath$high_use, pormath$failures)
+#0   1   2   3
+#FALSE 238  12   8   1
+#TRUE   87  12   9   3
+
+table(pormath$high_use, pormath$famsup)
+#no yes
+#FALSE  94 165
+#TRUE   45  66
+
+#Choosing sex, internet, failures and famsup
+
+#Observing the data for the latter analysis
+summary(pormath$alc_use)
+#   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+#1.000   1.000   1.500   1.889   2.500   5.000
+
+hist(pormath$alc_use)
+
+higher <- pormath$alc_use >2
+
+table(higher)
+#FALSE  TRUE 
+#259   111
+
+summary(pormath$Dalc)
+#   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+#1.000   1.000   1.000   1.484   2.000   5.000 
+hist(pormath$Dalc)
+head(pormath$Dalc)
+
+summary(pormath$Walc)
+#Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+#1.000   1.000   2.000   2.295   3.000   5.000 
+hist(pormath$Walc)
+head(pormath$Walc)
