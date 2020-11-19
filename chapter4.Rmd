@@ -1,0 +1,129 @@
+# Classification and clustering (week 4)  
+
+> *This week introduced classification and clustering methods, such as LDA and k-means clustering*  
+
+
+In this exercise, Boston data from R package MASS was used. The data includes housing values in suburbs of Boston, such as crime rate, owner occupied houses, pupil-teacher ratios and so on. More information regarding the data is found [here](https://stat.ethz.ch/R-manual/R-devel/library/MASS/html/Boston.html).
+
+```{r echo=FALSE, results='hide', include = FALSE}
+library(tidyverse)
+library(MASS)
+library(corrplot)
+```
+
+The Boston dataset includes 506 observations from 14 variables. For example, crim means per capita crime rate by town, chas closeness to Charles river, nox the nitrogen oxides concentration, and age is proportion of owner-occupied units built prior to 1940. Variable rad includes index of accessibility to radial highways and lstat means lower status of the population (percent). 
+
+```{r}
+#Loading in the data, observing the structure
+data("Boston")
+str(Boston)
+```
+  Looking at statistics of the data. Here, more of the  owner-occupied units are build prior to 1940 and many are not close to Charles river.
+```{r}
+#Calculating descriptive statitics and visualising
+summary(Boston)
+pairs(Boston[1:4])
+pairs(Boston[5:9])
+pairs(Boston[10:14])
+```
+
+Zn and indus variables seem to have negative correlation (meaning where is residential land, there are no non-retailer business acres and vice versa). For example age and nox have positive vs age and dis have negative correlation.
+
+```{r}
+cor_matrix<-cor(Boston) %>%
+ round(digits = 2)
+corrplot(cor_matrix, method="circle", cl.pos = "b", tl.pos = "d", tl.cex = 0.6)
+```
+
+Next, the data is standardized by decreasing the variable mean from each observation and dividing the number by sd. Therefore, each observation represents whether the real observation was bigger or smaller than the mean, and how far it was from the standard deviation.
+
+```{r}
+#Standardazing the data with z-scoring
+boston_scaled <- scale(Boston)
+summary(boston_scaled)
+boston_scaled <- as.data.frame(boston_scaled)
+```
+
+Calculating catecorical variable from crime, representing the crime rate
+```{r}
+bins <- quantile(boston_scaled$crim)
+crime <- cut(boston_scaled$crim, breaks = bins, include.lowest = TRUE, label = c("low", "med_low", "med_high", "high"))
+table(crime)
+boston_scaled <- dplyr::select(boston_scaled, -crim)
+boston_scaled <- data.frame(boston_scaled, crime)
+```
+
+Dividing data to test set and train set
+```{r}
+n <- nrow(boston_scaled)
+ind <- sample(n,  size = n * 0.8)
+train <- boston_scaled[ind,]
+test <- boston_scaled[-ind,]
+correct_classes <- test$crime
+test <- dplyr::select(test, -crime)
+```
+
+Calculating linear discriminant analysis from the train data, by using crime rate as target variable.
+
+```{r}
+lda.fit <- lda(crime ~., data = train)
+lda.fit
+
+lda.arrows <- function(x, myscale = 1, arrow_heads = 0.1, color = "red", tex = 0.75, choices = c(1,2)){
+  heads <- coef(x)
+  arrows(x0 = 0, y0 = 0, 
+         x1 = myscale * heads[,choices[1]], 
+         y1 = myscale * heads[,choices[2]], col=color, length = arrow_heads)
+  text(myscale * heads[,choices], labels = row.names(heads), 
+       cex = tex, col=color, pos=3)
+}
+classes <- as.numeric(train$crime)
+
+plot(lda.fit, dimen = 2, col = classes, pch = classes)+
+lda.arrows(lda.fit, myscale = 2.5)
+```
+
+LDA tries to maximize difference between the mean of the groups, whereas minimize the standard deviation between the groups. As is seen in the plot, the high-crime rate cluster is different from the other group and rad (=accessibility to highways) explains this variation. Maybe the harder accessibility to highways means slower response time for police, that may increase the tendency to crimes? However, this would have to be confirmed elsewhere.
+
+The prediction capability of the algorithm is then tested using the test data.
+
+```{r}
+lda.pred <- predict(lda.fit, newdata = test)
+
+table(correct = correct_classes, predicted = lda.pred$class)
+
+```
+  LDA prediction to test data leads to table above. The algorithm differentiates high crime rates well, but the accuracy is not that good what comes to low rates of crimes. Differentiating medium high and medium low -categories is hard, which might reveal something from the original data (e.g. the differences are not huge in there either).
+
+
+Next, k-means clustering is done to the data. The data is scaled and then clustering is done with 3 clusters.
+
+```{r}
+data('Boston')
+std_boston <- scale(Boston)
+
+km <-kmeans(std_boston, centers = 3)
+pairs(std_boston, col = km$cluster)
+```
+
+
+The clusters black and red are located quite above each others, the green is somewhat different from those. Rad and tax variables can differentiate the green cluster from the others and zn can somewhat differentiate the black and red clusters from each other.
+
+
+Here, the optimal number of clusters is tested
+```{r}
+set.seed(123)
+k_max <- 10
+twcss <- sapply(1:k_max, function(k){kmeans(std_boston, k)$tot.withinss})
+qplot(x = 1:k_max, y = twcss, geom = 'line')
+```
+
+
+The optimal amount of clusters seems to be 2, so this is used
+```{r}
+km2 <-kmeans(std_boston, centers = 2)
+pairs(std_boston, col = km2$cluster)
+
+```
+
+K-means clustering divides the data to two clusters. As is seen in the figure above, rad and tax variables explain the difference between the two clusters well. Then again, chas variable includes observations from both clusters, so these are not that good explanatory variables for discriminating the clusters.
