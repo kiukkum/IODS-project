@@ -1,4 +1,4 @@
-## Principal component analysis (week 5)  
+# Principal component analysis (week 5)  
 
 > *This week introduced dimension reduction methods such as PCA and MCA*  
 
