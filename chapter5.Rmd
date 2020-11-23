@@ -1,0 +1,107 @@
+## Principal component analysis (week 5)  
+
+> *This week introduced dimension reduction methods such as PCA and MCA*  
+
+
+In this exercise, data used to calculate human development index, was used. The data includes health and life quality measures such as life expectancy and education in 155 different countries around the world. More information regarding the data is found [here](http://hdr.undp.org/en/content/human-development-report-2019-readers-guide).
+
+```{r echo=FALSE, results='hide', include = FALSE}
+library(tidyverse)
+library(corrplot)
+library(GGally)
+```
+
+```{r data in}
+#Reading the data in. Changing first column to rownames
+human <-read.csv("new_human_data.csv")
+row.names(human) <-human[ ,1]
+human <- human[ ,-1]
+str(human)
+```
+The data has 155 observations (different countries) and 8 variables describing different characteristics of health, wellbeing, safety and life quality. Variables include fm2edur (rate of females and males with second education), GNI (gross national income),  matmorthrat (maternal mortality ratio, deaths per live births). Furthermore, labfm contains the ratio of labour force participation of females and males in each country, expedu (expected years of education), where as lifeexp has the life expectancy at birth. reprinpar has information about female seats in parliament and adbirthr (births per 1,000 women ages 15–19)
+
+```{r}
+#Getting to know the data
+summary(human)
+ggpairs(human)
+
+```
+
+
+  Only one rather normally distributed variable is found, the expedu (the expected years of education) with median 13.5 years. Variables fm2edur and labfm are left-skewed, since many countries have high female-male ratio in attending second education and working, but some countries do not. Life-expectancy has increasing density line, starting form 50 years to above 80 years. matmortrat and adbirth are heavily skewed, since many westernized countries have low ratios in these.
+
+Then, looking how the variables correlate with each others:
+
+```{r}
+#Creating correlation matrix and plotting it
+cor(human) %>%
+corrplot()
+```
+
+Life expectancy and expected years of education correlate highly and both of these also correlate with GNI. matmortrat and adbirthr correlate negatively with female to male education ratio and life expectancy.
+
+
+Doing a PCA analysis, where 8-dimensional data is reduced to two dimensions.
+```{r}
+#Principle component analysis
+pca_human <- prcomp(human)
+biplot(pca_human, choices = 1:2, cex = c(0.8, 1))
+summary(pca_human)
+
+```
+PCA analysis for unscaled data tells that the highest variance is explained by the first principle component, since not much variation is to be explained by PC2. GNI has longest arrow, meaning the proportion to the standard deviation of the variable. Since the angle of the variable GNI is very small (it is to same direction as PC1), is is highly correlated with PC1.
+
+Then, the data is scaled (z-scored) and the PCA analysis is done again.
+
+```{r}
+scaled_human <- scale(human)
+pca_human2 <- prcomp(scaled_human)
+s <- summary(pca_human2)
+pca_pr <- round(100*s$importance[2,], digits = 1) 
+pc_lab <- paste0(names(pca_pr), " (", pca_pr, "%)")
+
+biplot(pca_human2, cex = c(0.6, 1), col = c("grey40", "deeppink2"), xlab = pc_lab[1], ylab = pc_lab[2])
+```
+When the data is scaled, the situation changes. PC1 explains 53.6 % of the variance in the data and PC2 16.2 %. All the variables have approximately same standard deviation, due to scaling.
+
+mathmortrat and adbirthr point to positive end of PC1, so they correlate with each others and also PC1. Higher values of these (higher than mean values with high st.dev) are associated with higher values of PC1. Controversially, expedu, fm2edu and lifeexp are correlated to others and PC1, but higher values of these are associated with decreasing PC1 values.
+
+
+labfm and reprinpar seem to correlate highly to each others and they also correlate with the PC2 (higher values).
+
+
+Then, MCA, PCA-application for categorical data is tested. Tea-dataset has 6 variables describing enjoying tea (such as what time of tea it is, is sugar used and is the tea packed in tea bag or not).
+
+```{r}
+#Loading in tea -dataset and observing how the data looks
+library(FactoMineR)
+data("tea")
+
+keep_columns <- c("Tea", "How", "how", "sugar", "where", "lunch")
+tea_time <- dplyr::select(tea, one_of(keep_columns))
+
+str(tea_time)
+
+``` 
+
+The tea data has more tea bagged tea, that is not served with lunch, is preferably drank without added products, as seen from the visualizations.
+```{r}
+#Visualizing the tea data
+gather(tea_time) %>% ggplot(aes(value)) + facet_wrap("key", scales = "free")+
+geom_bar()+
+theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8)) 
+
+```
+
+MCA plot is produced here:
+
+```{r}
+#Building MCA plot after MCA analysis
+mca <- MCA(tea_time, graph = FALSE)
+summary(mca)
+
+plot(mca, invisible=c("ind"), habillage = "quali")
+```
+MCA plot dimension 1 explain approximately 15 % of the variation in the tea data and dim 2 14 %. 
+
+"unpackaged" and "tea shop" are highly correlated and they also correlate with dimension 1. "other" along with "chain store + tea shop" and "tea bag + unpackaged" are correlated with dimension 2.
