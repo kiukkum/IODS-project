@@ -1,0 +1,199 @@
+---
+title: "chapt_test"
+author: "Kiira"
+date: "01/12/2020"
+output: html_document
+---
+# Longitudinal data analysis (week 6)  
+
+> *The last week  of the course was about longitudinal data and linear mixed effect models*  
+
+In this exercise, two dataset are used. One dataset has brief psychiatric rating scale (BPRS) data from 40 males in baseline and weekly for 8 weeks. The other dataset has information of rats on 3 different diets, with observations of the weight for 9 weeks.
+
+## Analysis of rat weight in different diets
+
+```{r echo=FALSE, results='hide', include = FALSE}
+library(tidyverse)
+library(lme4)
+```
+The data has 16 rats in 3 different diets (groups) followed for total 11 timepoints, including the baseline measurement and two measurements in week 7. First, the data is read in and observed. 
+```{r}
+#Reading the data in, changing variables to factors and observing the data
+data <- read.delim("RATSL_data.txt", sep = " ")
+
+data$ID <- as.factor(data$ID)
+data$Group <- as.factor(data$Group)
+
+glimpse(data)
+```
+The data is visualized and it is noted that groups 2 and 3 differ in weight already at the start of the study.
+
+```{r}
+#Plotting the rat data
+ggplot(data, aes(x = Time, y = Weight, group = ID, color = Group)) +
+  geom_line(aes(linetype = Group))+
+  scale_x_continuous(name = "Time (days)", breaks = seq(0, 60, 10))+
+  scale_y_continuous(name = "Weight (g)")+
+  theme(legend.position = "top")+
+  theme_bw()
+```
+
+From the graph above, it is also noticed, that one of the group 2 rats is much heavier than any rat in groups 2 or 3, already at baseline.   
+
+This can also be seen from the summary below, where in group 2, the max weight is higher than mean of either groups 2 or 3.
+```{r}
+#Calculating max and median weights for rats in the different groups
+data %>%
+  group_by(Group) %>%
+  summarise(max(Weight), mean(Weight))
+
+```
+
+Therefore, the outlier rat is fetched and removed from the data.
+```{r}
+#Observing which is the heaviest rat (in group 2) and excluding it from the data 
+a <-data %>%
+  arrange(desc(Weight)) 
+head(a) #rat ID 12
+
+data2 <- data %>%
+  filter(ID != 12)
+```
+
+Now, group means and standard errors are calculated in every group, per timepoint.
+```{r}
+#Then lets plot the group means and standard errors of the groups
+n = 11 # Different times
+data2 <- data2 %>%
+  group_by(Group, Time) %>%
+  mutate(mean = mean(Weight), se= sd(Weight)/sqrt(n))
+glimpse(data2)
+```
+The data is visualized by the means and standard errors of the different groups
+```{r }
+#Plotting mean  and standard error of the groups per timepoint
+ggplot(data2, aes(x = Time, y = mean, linetype = Group, shape = Group)) +
+  geom_line() +
+  scale_linetype_manual(values = c(1,2,3)) +
+  geom_point(size=4) +
+  scale_shape_manual(values = c(1,2,3)) +
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se, linetype="1"), width=0.5) +
+  theme(legend.position = c(0.8,0.8)) +
+  scale_y_continuous(name = "mean(Weight) +/- se(Weight)")+
+  theme_bw()
+``` 
+
+
+Now, only baseline weight and weight in the last week are kept in the data.
+
+```{r}
+g <- data2 %>%
+ select(Weight, Time, Group) %>%
+  filter(Time ==1 | Time == 64)
+```
+
+The weight in each group in week 0 and in the last week are visualized, to see whether the weight of the rats have changed due to the diet. Nothced boxplot is used, which includes the confidence interval for each set.
+
+```{r}
+g$Time <- as.factor(g$Time)
+ggplot(g, aes(x= Group, y= Weight, color = Time)) + geom_boxplot(notch = T)+
+  theme_bw()
+
+```
+
+
+It is noticed from the plot, that group 2 is at least differing between the timepoints, but let's calculate p-values for the groups 1 and 3. First, the data is divided to sets per the group.
+```{r}
+g1 <- data2 %>%
+ select(Weight, Time, Group) %>%
+  filter(Group ==1, Time ==1 | Time == 64)
+
+g3 <- data2 %>%
+ select(Weight, Time, Group) %>%
+  filter(Group ==3, Time ==1 | Time == 64)
+
+```
+
+Then, hypothesis testing is done with t-test, measuring whether the means of the weight differ in start and end of the study.
+```{r}
+# Hypothesis testing, testing whether means in start and end of the study differ between group 1
+t.test(Weight ~Time, data = g1)
+# and in group 3
+t.test(Weight ~Time, data = g3)
+```
+So, it looks like the diet can alter the weight in groups 1 and 2, but not in group 3. However, the difference in group 1 could be even higher if the one outlier would be removed.
+
+## Second analysis: psychiatric intervention
+Then, the other dataset observed. The data includes 20 males with psychiatric condition measured weekly (8 weeks) with and without treatment. 
+
+```{r}
+#Reading the data in, changing variables to factors and observing the data
+datab <- read.delim("BPRSL_data.txt", sep = " ")
+
+datab$treatment <- as.factor(datab$treatment)
+datab$subject <- as.factor(datab$subject)
+glimpse(datab)
+
+```
+The data is visualized, where each individual is represented in its own color and different treatments with differently shaped marks.
+```{r}
+ggplot(datab, aes(x = week, y = bprs, color = subject, shape = treatment)) +
+  geom_point(position = "jitter")+
+  geom_line()+
+  theme(legend.position = "top")+
+  scale_y_continuous(limits = c(0, 100))+
+  theme_bw()
+
+```
+
+
+Then, regression model for the data is calculated, to see whether the treatment and time can explain variation in the brief psychitric rating scale (bprs). According to the model, treatment is not significant explanatory factor in the model, which suggests that the treatment might not have an effect to the psychiatric condition, when measured with bprs. The time again has significant effect to the score.
+```{r}
+BPRS_reg <- lm(bprs ~treatment + week, data = datab)
+summary(BPRS_reg)
+```
+Random intercept model is also tested, to see whether including the subject information as random effect alters the former linear model. In the model, bprs is allowed to vary in each subject.
+```{r}
+BPRS_ref <- lmer(bprs ~ week + treatment + (1 | subject), data = datab, REML = FALSE)
+summary(BPRS_ref)
+```
+Also, the effect of weekly change in subject is taken account in the following model 
+```{r}
+BPRS_ref2 <- lmer(bprs ~ week + treatment + (week | subject), data = datab, REML = FALSE)
+summary(BPRS_ref2)
+```
+
+The different models are then compared using analysis of variance (ANOVA)
+```{r}
+anova(BPRS_ref, BPRS_ref2)
+
+```
+There is significant difference in the P-value (Chi-squared test) in the two models, so lets use the latter, more advanced model.
+
+Also, lets yet test one model which takes into account the weekly and inter-subject variability, and compare it to the later model
+```{r}
+BPRS_ref3 <- lmer(bprs ~ week + treatment + (week | subject) + (week | treatment), data = datab, REML = FALSE)
+anova(BPRS_ref2, BPRS_ref3)
+```
+The P-value is really big, so the fit of the model against the comparison model is not good.
+
+Then, the model that takes into account weekly & inter-subject variability is used. Fitted values are calculated and added to the data
+
+```{r}
+Fitted <- fitted(BPRS_ref2)
+
+datab <-datab %>%
+mutate(Fitted = Fitted)
+```
+
+And then, the fitted values are plotted in the same manner as the original data
+```{r}
+ggplot(datab, aes(x = week, y = Fitted, shape = treatment, color = subject))+
+  geom_point() +
+  geom_line()+
+  theme(legend.position = "top") +
+  theme_bw()
+
+```
+
+Therefore, the brief psychiatric test scores decrease in all of the individuals throughout the time, regardless of the treatment. 
